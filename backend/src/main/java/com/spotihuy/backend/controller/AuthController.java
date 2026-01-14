@@ -2,6 +2,7 @@ package com.spotihuy.backend.controller;
 
 import com.spotihuy.backend.controller.dto.AuthRequest;
 import com.spotihuy.backend.controller.dto.AuthResponse;
+import com.spotihuy.backend.controller.dto.LoginRequest;
 import com.spotihuy.backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         try {
             log.info("Login attempt for email: {}", request.getEmail());
             AuthResponse response = authService.login(request);

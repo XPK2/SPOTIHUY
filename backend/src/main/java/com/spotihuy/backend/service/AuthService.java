@@ -2,6 +2,7 @@ package com.spotihuy.backend.service;
 
 import com.spotihuy.backend.controller.dto.AuthRequest;
 import com.spotihuy.backend.controller.dto.AuthResponse;
+import com.spotihuy.backend.controller.dto.LoginRequest;
 import com.spotihuy.backend.controller.dto.UserResponse;
 import com.spotihuy.backend.entity.User;
 import com.spotihuy.backend.repository.UserRepository;
@@ -51,7 +52,7 @@ public class AuthService {
                 .build();
     }
 
-    public AuthResponse login(AuthRequest request) {
+    public AuthResponse login(LoginRequest request) {
         log.info("Login attempt for email: {}", request.getEmail());
 
         User user = userRepository.findByEmail(request.getEmail())
