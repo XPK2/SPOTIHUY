@@ -1,128 +1,140 @@
 'use client'
 
 import { useState } from 'react'
-import { Music, Users, Play, Pause } from 'lucide-react'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { Header } from '@/components/layout/Header'
+import { MusicPlayer } from '@/components/player/MusicPlayer'
+import { SongInput } from '@/components/ui/SongInput'
+import { Queue } from '@/components/ui/Queue'
+
+interface Track {
+  id: string
+  url: string
+  title?: string
+  addedBy: string
+  addedAt: string
+  duration?: string
+}
 
 export default function Home() {
-  const [currentTrack, setCurrentTrack] = useState<string>('')
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [queue, setQueue] = useState<string[]>([])
+  const [queue, setQueue] = useState<Track[]>([])
 
-  const handleSubmitLink = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const link = formData.get('link') as string
+  const handleSubmitLink = async (url: string) => {
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
-    if (link.trim()) {
-      setQueue(prev => [...prev, link])
-      setCurrentTrack(link)
+    const newTrack: Track = {
+      id: Date.now().toString(),
+      url,
+      title: `Track ${queue.length + 1}`,
+      addedBy: 'You',
+      addedAt: new Date().toISOString(),
+      duration: '3:24'
+    }
+
+    setQueue(prev => [...prev, newTrack])
+
+    if (!currentTrack) {
+      setCurrentTrack(newTrack)
       setIsPlaying(true)
-      e.currentTarget.reset()
+    }
+  }
+
+  const handlePlayTrack = (trackId: string) => {
+    const track = queue.find(t => t.id === trackId)
+    if (track) {
+      setCurrentTrack(track)
+      setIsPlaying(true)
+    }
+  }
+
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying)
+  }
+
+  const handleNext = () => {
+    if (currentTrack) {
+      const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
+      const nextIndex = (currentIndex + 1) % queue.length
+      setCurrentTrack(queue[nextIndex])
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentTrack) {
+      const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1
+      setCurrentTrack(queue[prevIndex])
+    }
+  }
+
+  const handleRemoveTrack = (trackId: string) => {
+    setQueue(prev => prev.filter(t => t.id !== trackId))
+    if (currentTrack?.id === trackId) {
+      const remainingTracks = queue.filter(t => t.id !== trackId)
+      if (remainingTracks.length > 0) {
+        setCurrentTrack(remainingTracks[0])
+      } else {
+        setCurrentTrack(null)
+        setIsPlaying(false)
+      }
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background-primary to-background-tertiary">
-      {/* Header */}
-      <header className="bg-background-secondary border-b border-border-primary px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Music className="w-8 h-8 text-blue-500" />
-            <h1 className="text-2xl font-bold text-text-primary">Spotihuy</h1>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Users className="w-5 h-5 text-text-muted" />
-            <span className="text-text-secondary text-sm">5 members online</span>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background-primary flex">
+      {/* Sidebar */}
+      <Sidebar />
 
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-80px)]">
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Link Input */}
-          <div className="bg-background-secondary rounded-lg p-6 mb-6 border border-border-primary">
-            <h2 className="text-xl font-semibold mb-4 text-text-primary">Share a Song</h2>
-            <form onSubmit={handleSubmitLink} className="space-y-4">
-              <div className="flex space-x-3">
-                <input
-                  type="url"
-                  name="link"
-                  placeholder="Paste YouTube or SoundCloud link here..."
-                  className="flex-1 px-4 py-3 bg-background-tertiary border border-border-secondary rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center space-x-2"
-                >
-                  <Play className="w-5 h-5" />
-                  <span>Play</span>
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <Header />
 
-          {/* Now Playing */}
-          {currentTrack && (
-            <div className="bg-background-secondary rounded-lg p-6 mb-6 border border-border-primary">
-              <h3 className="text-lg font-semibold mb-4 text-text-primary">Now Playing</h3>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-background-tertiary rounded-lg flex items-center justify-center">
-                    <Music className="w-8 h-8 text-text-muted" />
-                  </div>
-                  <div>
-                    <p className="text-text-primary font-medium truncate max-w-md">
-                      {currentTrack}
-                    </p>
-                    <p className="text-text-secondary text-sm">Added by you</p>
-                  </div>
+        {/* Content Area */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Welcome Section */}
+            <div className="bg-gradient-primary rounded-xl p-8 text-white animate-fade-in">
+              <h1 className="text-3xl font-bold mb-2">Welcome to Spotihuy! 🎵</h1>
+              <p className="text-blue-100 mb-4">
+                Share music with your team without worrying about IP blocks. Just paste a link and enjoy!
+              </p>
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse-soft"></div>
+                  <span>5 members online</span>
                 </div>
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-12 h-12 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-colors duration-200"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-6 h-6 text-white" />
-                  ) : (
-                    <Play className="w-6 h-6 text-white ml-1" />
-                  )}
-                </button>
+                <div className="flex items-center space-x-2">
+                  <span>🔥</span>
+                  <span>12 songs played today</span>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Queue */}
-          <div className="bg-background-secondary rounded-lg p-6 border border-border-primary">
-            <h3 className="text-lg font-semibold mb-4 text-text-primary">Queue ({queue.length})</h3>
-            {queue.length === 0 ? (
-              <p className="text-text-muted text-center py-8">
-                No songs in queue. Add a link above to get started!
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {queue.map((track, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-4 p-3 bg-background-tertiary rounded-lg hover:bg-background-tertiary/80 transition-colors duration-200"
-                  >
-                    <div className="w-10 h-10 bg-background-primary rounded flex items-center justify-center text-text-muted font-medium">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-text-primary truncate max-w-md">{track}</p>
-                      <p className="text-text-secondary text-sm">Added by you</p>
-                    </div>
-                    <button className="text-text-muted hover:text-blue-500 transition-colors duration-200">
-                      <Play className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Song Input */}
+            <SongInput onSubmit={handleSubmitLink} />
+
+            {/* Queue */}
+            <Queue
+              tracks={queue}
+              currentTrackId={currentTrack?.id}
+              onPlayTrack={handlePlayTrack}
+              onRemoveTrack={handleRemoveTrack}
+            />
           </div>
         </main>
+
+        {/* Music Player */}
+        <MusicPlayer
+          track={currentTrack?.url || null}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          onNext={queue.length > 1 ? handleNext : undefined}
+          onPrevious={queue.length > 1 ? handlePrevious : undefined}
+        />
       </div>
     </div>
   )
