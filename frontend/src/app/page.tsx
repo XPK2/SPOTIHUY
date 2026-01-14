@@ -1,52 +1,73 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { MusicPlayer } from '@/components/player/MusicPlayer'
 import { SongInput } from '@/components/ui/SongInput'
 import { Queue } from '@/components/ui/Queue'
-
-interface Track {
-  id: string
-  url: string
-  title?: string
-  addedBy: string
-  addedAt: string
-  duration?: string
-}
+import { apiService, Track } from '@/lib/api'
+import toast, { Toaster } from 'react-hot-toast'
 
 export default function Home() {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [queue, setQueue] = useState<Track[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleSubmitLink = async (url: string) => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
+  // Load queue on component mount
+  useEffect(() => {
+    loadQueue()
+  }, [])
 
-    const newTrack: Track = {
-      id: Date.now().toString(),
-      url,
-      title: `Track ${queue.length + 1}`,
-      addedBy: 'You',
-      addedAt: new Date().toISOString(),
-      duration: '3:24'
-    }
-
-    setQueue(prev => [...prev, newTrack])
-
-    if (!currentTrack) {
-      setCurrentTrack(newTrack)
-      setIsPlaying(true)
+  const loadQueue = async () => {
+    try {
+      setIsLoading(true)
+      const tracks = await apiService.getQueue()
+      setQueue(tracks)
+    } catch (error) {
+      console.error('Failed to load queue:', error)
+      toast.error('Failed to load music queue')
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handlePlayTrack = (trackId: string) => {
-    const track = queue.find(t => t.id === trackId)
-    if (track) {
-      setCurrentTrack(track)
-      setIsPlaying(true)
+  const handleSubmitLink = async (url: string) => {
+    try {
+      const trackData = {
+        url,
+        addedBy: 'You' // In production, get from user auth
+      }
+
+      const newTrack = await apiService.addTrack(trackData)
+
+      // Update local state
+      setQueue(prev => [...prev, newTrack])
+
+      if (!currentTrack) {
+        setCurrentTrack(newTrack)
+        setIsPlaying(true)
+      }
+
+      toast.success('Song added to queue!')
+    } catch (error) {
+      console.error('Failed to add track:', error)
+      toast.error('Failed to add song. Please check the URL and try again.')
+    }
+  }
+
+  const handlePlayTrack = async (trackId: number) => {
+    try {
+      const track = queue.find(t => t.id === trackId)
+      if (track) {
+        setCurrentTrack(track)
+        setIsPlaying(true)
+        toast.success(`Now playing: ${track.title}`)
+      }
+    } catch (error) {
+      console.error('Failed to play track:', error)
+      toast.error('Failed to play track')
     }
   }
 
@@ -55,32 +76,64 @@ export default function Home() {
   }
 
   const handleNext = () => {
-    if (currentTrack) {
+    if (currentTrack && queue.length > 1) {
       const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
       const nextIndex = (currentIndex + 1) % queue.length
-      setCurrentTrack(queue[nextIndex])
+      const nextTrack = queue[nextIndex]
+      setCurrentTrack(nextTrack)
+      toast.success(`Next: ${nextTrack.title}`)
     }
   }
 
   const handlePrevious = () => {
-    if (currentTrack) {
+    if (currentTrack && queue.length > 1) {
       const currentIndex = queue.findIndex(t => t.id === currentTrack.id)
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1
-      setCurrentTrack(queue[prevIndex])
+      const prevTrack = queue[prevIndex]
+      setCurrentTrack(prevTrack)
+      toast.success(`Previous: ${prevTrack.title}`)
     }
   }
 
-  const handleRemoveTrack = (trackId: string) => {
-    setQueue(prev => prev.filter(t => t.id !== trackId))
-    if (currentTrack?.id === trackId) {
-      const remainingTracks = queue.filter(t => t.id !== trackId)
-      if (remainingTracks.length > 0) {
-        setCurrentTrack(remainingTracks[0])
-      } else {
-        setCurrentTrack(null)
-        setIsPlaying(false)
+  const handleRemoveTrack = async (trackId: number) => {
+    try {
+      await apiService.removeTrack(trackId)
+
+      // Update local state
+      setQueue(prev => prev.filter(t => t.id !== trackId))
+
+      if (currentTrack?.id === trackId) {
+        const remainingTracks = queue.filter(t => t.id !== trackId)
+        if (remainingTracks.length > 0) {
+          setCurrentTrack(remainingTracks[0])
+        } else {
+          setCurrentTrack(null)
+          setIsPlaying(false)
+        }
       }
+
+      toast.success('Song removed from queue')
+    } catch (error) {
+      console.error('Failed to remove track:', error)
+      toast.error('Failed to remove song')
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background-primary flex">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-text-secondary">Loading music queue...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -105,11 +158,11 @@ export default function Home() {
               <div className="flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse-soft"></div>
-                  <span>5 members online</span>
+                  <span>Backend connected</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span>🔥</span>
-                  <span>12 songs played today</span>
+                  <span>🎵</span>
+                  <span>{queue.length} songs in queue</span>
                 </div>
               </div>
             </div>
@@ -119,23 +172,43 @@ export default function Home() {
 
             {/* Queue */}
             <Queue
-              tracks={queue}
-              currentTrackId={currentTrack?.id}
-              onPlayTrack={handlePlayTrack}
-              onRemoveTrack={handleRemoveTrack}
+              tracks={queue.map(track => ({
+                id: track.id.toString(),
+                url: track.url,
+                title: track.title,
+                addedBy: track.addedBy,
+                addedAt: track.addedAt,
+                duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined
+              }))}
+              currentTrackId={currentTrack?.id.toString()}
+              onPlayTrack={(id) => handlePlayTrack(parseInt(id))}
+              onRemoveTrack={(id) => handleRemoveTrack(parseInt(id))}
             />
           </div>
         </main>
 
         {/* Music Player */}
         <MusicPlayer
-          track={currentTrack?.url || null}
+          track={currentTrack?.streamUrl || currentTrack?.url || null}
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
           onNext={queue.length > 1 ? handleNext : undefined}
           onPrevious={queue.length > 1 ? handlePrevious : undefined}
         />
       </div>
+
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#36393f',
+            color: '#dcddde',
+            border: '1px solid #202225',
+          },
+        }}
+      />
     </div>
   )
 }
