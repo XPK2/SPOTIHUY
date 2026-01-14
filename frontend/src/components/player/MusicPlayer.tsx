@@ -73,6 +73,47 @@ export function MusicPlayer({ track, isPlaying, onPlayPause, onNext, onPrevious 
 
   if (!track) return null
 
+  // For YouTube URLs, show embed player
+  const isYouTubeUrl = track && (track.includes('youtube.com') || track.includes('youtu.be'))
+  const getYouTubeVideoId = (url: string) => {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/
+    const match = url.match(regExp)
+    return (match && match[7].length === 11) ? match[7] : null
+  }
+
+  if (isYouTubeUrl) {
+    const videoId = getYouTubeVideoId(track)
+    if (videoId) {
+      return (
+        <div className="bg-background-secondary border-t border-border-primary p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
+                <Play className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-text-primary font-medium">YouTube Video</p>
+                <p className="text-text-secondary text-sm">Embedded Player</p>
+              </div>
+            </div>
+            <div className="text-text-secondary text-sm">
+              {isPlaying ? 'Playing' : 'Paused'}
+            </div>
+          </div>
+
+          <div className="aspect-video w-full max-w-2xl mx-auto">
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&mute=0`}
+              className="w-full h-full rounded-lg"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )
+    }
+  }
+
   return (
     <div className="bg-background-secondary border-t border-border-primary p-4">
       <audio
