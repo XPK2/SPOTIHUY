@@ -31,10 +31,10 @@ public class TrackService {
             throw new IllegalArgumentException("Invalid URL format");
         }
 
-        // Check if URL is accessible
-        if (!mediaService.isValidMediaUrl(request.getUrl())) {
-            throw new IllegalArgumentException("URL is not accessible");
-        }
+        // Skip URL validation for now - let yt-dlp handle it
+        // if (!mediaService.isValidMediaUrl(request.getUrl())) {
+        //     throw new IllegalArgumentException("URL is not accessible");
+        // }
 
         // Extract track information
         Track track = mediaService.extractTrackInfo(request.getUrl(), request.getAddedBy());

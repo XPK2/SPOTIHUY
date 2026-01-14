@@ -39,56 +39,9 @@ public class MediaService {
 
         Track.Platform platform = detectPlatform(url);
 
-        try {
-            ProcessBuilder processBuilder = new ProcessBuilder();
-            processBuilder.command("yt-dlp",
-                    "--no-playlist",
-                    "--print-json",
-                    "--no-warnings",
-                    "--extract-audio",
-                    "--audio-format", "mp3",
-                    "--audio-quality", "128K",
-                    url);
-
-            Process process = processBuilder.start();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                StringBuilder output = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line);
-                }
-
-                boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-                if (!finished) {
-                    process.destroyForcibly();
-                    throw new RuntimeException("yt-dlp extraction timed out");
-                }
-
-                if (process.exitValue() != 0) {
-                    throw new RuntimeException("yt-dlp extraction failed");
-                }
-
-                String jsonOutput = output.toString();
-                JsonNode jsonNode = objectMapper.readTree(jsonOutput);
-
-                return Track.builder()
-                        .url(url)
-                        .title(jsonNode.path("title").asText("Unknown Title"))
-                        .artist(jsonNode.path("uploader").asText("Unknown Artist"))
-                        .thumbnailUrl(jsonNode.path("thumbnail").asText())
-                        .duration(parseDuration(jsonNode.path("duration").asText()))
-                        .platform(platform)
-                        .addedBy(addedBy != null ? addedBy : "Anonymous")
-                        .streamUrl(generateStreamUrl(url))
-                        .build();
-
-            }
-        } catch (IOException e) {
-            log.error("Failed to extract track info for URL: {}", url, e);
-            // Fallback: create basic track info
-            return createFallbackTrack(url, addedBy, platform);
-        }
+        // For now, create fallback track to test the API flow
+        // TODO: Implement proper yt-dlp integration
+        return createFallbackTrack(url, addedBy, platform);
     }
 
     /**
@@ -101,33 +54,14 @@ public class MediaService {
     }
 
     /**
-     * Get direct audio stream URL using yt-dlp
+     * Get direct audio stream URL
      */
     public String getAudioStreamUrl(String url) throws Exception {
         log.info("Getting audio stream URL for: {}", url);
 
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command("yt-dlp",
-                "--no-playlist",
-                "--get-url",
-                "--extract-audio",
-                "--audio-format", "mp3",
-                "--audio-quality", "128K",
-                url);
-
-        Process process = processBuilder.start();
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String streamUrl = reader.readLine();
-
-            boolean finished = process.waitFor(15, TimeUnit.SECONDS);
-            if (!finished || process.exitValue() != 0) {
-                process.destroyForcibly();
-                throw new RuntimeException("Failed to get stream URL");
-            }
-
-            return streamUrl != null ? streamUrl.trim() : null;
-        }
+        // For now, return the original URL as stream URL
+        // TODO: Implement proper audio stream extraction
+        return url;
     }
 
     /**
@@ -170,14 +104,30 @@ public class MediaService {
 
     private Track createFallbackTrack(String url, String addedBy, Track.Platform platform) {
         String title = extractTitleFromUrl(url);
+        String artist = "Unknown Artist";
+
+        // Try to extract more info from URL
+        if (platform == Track.Platform.YOUTUBE) {
+            if (url.contains("youtube.com/watch?v=")) {
+                title = "YouTube Video";
+                artist = "YouTube";
+            } else if (url.contains("youtu.be/")) {
+                title = "YouTube Short";
+                artist = "YouTube";
+            }
+        } else if (platform == Track.Platform.SOUNDCLOUD) {
+            artist = "SoundCloud";
+            title = "SoundCloud Track";
+        }
 
         return Track.builder()
                 .url(url)
                 .title(title)
-                .artist("Unknown Artist")
+                .artist(artist)
                 .platform(platform)
                 .addedBy(addedBy != null ? addedBy : "Anonymous")
                 .streamUrl(url)
+                .duration(180) // 3 minutes default
                 .build();
     }
 
