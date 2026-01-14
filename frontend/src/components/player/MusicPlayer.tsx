@@ -22,12 +22,20 @@ export function MusicPlayer({ track, isPlaying, onPlayPause, onNext, onPrevious 
   useEffect(() => {
     if (audioRef.current) {
       if (isPlaying) {
-        audioRef.current.play()
+        audioRef.current.play().catch(error => {
+          console.error('Audio play failed:', error)
+          // For demo: use a sample audio URL
+          if (track && track.includes('youtube.com')) {
+            console.log('Demo: YouTube streaming will be implemented. Using sample audio.')
+            audioRef.current.src = "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"
+            audioRef.current.play()
+          }
+        })
       } else {
         audioRef.current.pause()
       }
     }
-  }, [isPlaying])
+  }, [isPlaying, track])
 
   useEffect(() => {
     if (audioRef.current) {
@@ -69,6 +77,7 @@ export function MusicPlayer({ track, isPlaying, onPlayPause, onNext, onPrevious 
     <div className="bg-background-secondary border-t border-border-primary p-4">
       <audio
         ref={audioRef}
+        src={track || "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleTimeUpdate}
         preload="metadata"

@@ -59,9 +59,36 @@ public class MediaService {
     public String getAudioStreamUrl(String url) throws Exception {
         log.info("Getting audio stream URL for: {}", url);
 
-        // For now, return the original URL as stream URL
-        // TODO: Implement proper audio stream extraction
-        return url;
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command("/Users/macbook/Library/Python/3.9/bin/yt-dlp",
+                    "--no-playlist",
+                    "--get-url",
+                    "--extract-audio",
+                    "--audio-format", "mp3",
+                    "--audio-quality", "128K",
+                    url);
+
+            Process process = processBuilder.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String streamUrl = reader.readLine();
+
+                boolean finished = process.waitFor(10, TimeUnit.SECONDS);
+                if (!finished || process.exitValue() != 0) {
+                    process.destroyForcibly();
+                    log.warn("yt-dlp failed for URL: {}", url);
+                    // Fallback to original URL
+                    return url;
+                }
+
+                return streamUrl != null && !streamUrl.trim().isEmpty() ? streamUrl.trim() : url;
+            }
+        } catch (Exception e) {
+            log.error("Failed to get stream URL for: {}", url, e);
+            // Fallback to original URL
+            return url;
+        }
     }
 
     /**
