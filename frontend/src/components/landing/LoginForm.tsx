@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { X, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authApi, AuthRequest } from '@/lib/api'

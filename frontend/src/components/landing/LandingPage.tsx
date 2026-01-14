@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { Music, Users, Zap, Shield, Play, Star, ArrowRight } from 'lucide-react'
 import { LoginForm } from './LoginForm'
